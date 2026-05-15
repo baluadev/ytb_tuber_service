@@ -1,4 +1,3 @@
-library youtube_charts;
 
 export 'src/youtube_charts_client.dart';
 export 'src/models.dart';
