@@ -12,6 +12,7 @@ enum YouTubeChartsCountry {
   cr,
   cz,
   dk,
+  $do,
   ec,
   eg,
   sv,
@@ -23,6 +24,8 @@ enum YouTubeChartsCountry {
   hn,
   hk,
   hu,
+  is_, // 'is' is a reserved keyword in Dart
+  $in,
   id,
   ie,
   il,
