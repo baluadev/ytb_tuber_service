@@ -368,4 +368,78 @@ class YouTubeChartsClient {
       throw Exception('Failed to fetch playlist details: ${response.statusCode} - ${response.body}');
     }
   }
+
+  /// Fetch artist details including insights, total views, and top songs.
+  /// [artistId] is the unique identifier for the artist.
+  /// [country] is optional. If provided, fetches data for that country.
+  Future<Map<String, dynamic>> getArtistDetails({
+    required String artistId,
+    YouTubeChartsCountry country = YouTubeChartsCountry.global,
+  }) async {
+    final encodedArtistId = Uri.encodeComponent(Uri.decodeComponent(artistId));
+    final Map<String, dynamic> body = {
+      'browseId': 'FEmusic_analytics_insights_artist',
+      'context': {
+        'client': {
+          'clientName': 'WEB_MUSIC_ANALYTICS',
+          'clientVersion': '2.0',
+          'hl': 'en',
+          'gl': country == YouTubeChartsCountry.global ? 'US' : country.code.toUpperCase(),
+        }
+      },
+      'query': 'flags=MusicCharts__enable_apac_and_shorts_charts_expansion&perspective=ARTIST&entity_params_entity=ARTIST&artist_params_id=$encodedArtistId'
+    };
+
+    final response = await http.post(
+      Uri.parse(_baseUrl),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode(body),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      try {
+        final contents = data['contents']?['sectionListRenderer']?['contents'];
+        if (contents != null && contents.isNotEmpty) {
+          final content = contents[0]['musicAnalyticsSectionRenderer']?['content'];
+          if (content != null) {
+            final metadata = content['perspectiveMetadata'] ?? {};
+            
+            // Calculate total views from dates array if available
+            int totalViews = 0;
+            final dates = content['dates'] as List<dynamic>? ?? [];
+            if (dates.isNotEmpty && dates[0] is Map<String, dynamic>) {
+              final dateViews = dates[0]['dateViews'] as List<dynamic>? ?? [];
+              for (var dateView in dateViews) {
+                final viewCountStr = dateView['viewCount'] as String?;
+                if (viewCountStr != null) {
+                  totalViews += int.tryParse(viewCountStr) ?? 0;
+                }
+              }
+            }
+            
+            // Get top songs
+            List<dynamic> topSongs = [];
+            final trackTypes = content['trackTypes'] as List<dynamic>? ?? [];
+            if (trackTypes.isNotEmpty && trackTypes[0] is Map<String, dynamic>) {
+               topSongs = trackTypes[0]['trackViews'] as List<dynamic>? ?? [];
+            }
+            
+            return {
+              'metadata': metadata,
+              'totalViews': totalViews,
+              'topSongs': topSongs,
+            };
+          }
+        }
+        return {};
+      } catch (e) {
+        throw Exception('Failed to parse artist details: $e');
+      }
+    } else {
+      throw Exception('Failed to fetch artist details: ${response.statusCode} - ${response.body}');
+    }
+  }
 }
